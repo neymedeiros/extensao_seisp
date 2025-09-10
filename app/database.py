@@ -68,9 +68,10 @@ class DatabaseManager:
                 cursor = conn.cursor()
                 
                 query = """
-                    SELECT cpf_dest, nome_dest, fone 
+                    SELECT cpf_dest, nome_dest, fone, data_compra 
                     FROM dim_nfe 
                     WHERE cpf_dest = %s
+                    ORDER BY data_compra DESC, nome_dest
                     LIMIT 100
                 """
                 
@@ -92,9 +93,10 @@ class DatabaseManager:
                 cursor = conn.cursor()
                 
                 query = """
-                    SELECT cpf_dest, nome_dest, fone 
+                    SELECT cpf_dest, nome_dest, fone, data_compra 
                     FROM dim_nfe 
                     WHERE nome_dest = %s
+                    ORDER BY data_compra DESC, nome_dest
                     LIMIT 100
                 """
                 
@@ -109,17 +111,18 @@ class DatabaseManager:
     
     def consultar_nfe_por_fone(self, fone: str):
         """
-        Consulta exata por telefone (sem LIKE para performance)
+        Consulta exata por telefone - retorna TODAS as NFes ordenadas por data mais recente
         """
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 
                 query = """
-                    SELECT cpf_dest, nome_dest, fone 
+                    SELECT cpf_dest, nome_dest, fone, data_compra
                     FROM dim_nfe 
                     WHERE fone = %s
-                    LIMIT 100
+                    ORDER BY data_compra DESC, nome_dest
+                    LIMIT 500
                 """
                 
                 cursor.execute(query, (fone,))

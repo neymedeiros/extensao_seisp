@@ -105,10 +105,16 @@ async def home():
             }
             .result-item {
                 background: white;
-                margin: 10px 0;
-                padding: 15px;
-                border-radius: 8px;
+                margin: 15px 0;
+                padding: 20px;
+                border-radius: 10px;
                 border-left: 4px solid #3498db;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .result-item:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             }
         </style>
     </head>
@@ -193,7 +199,8 @@ async def home():
                             <div class="result-item">
                                 <strong>CPF:</strong> ${item.cpf_dest || 'N/A'}<br>
                                 <strong>Nome:</strong> ${item.nome_dest || 'N/A'}<br>
-                                <strong>Telefone:</strong> ${item.fone || 'N/A'}
+                                <strong>Telefone:</strong> ${item.fone || 'N/A'}<br>
+                                <strong>Data:</strong> ${item.data_compra || 'N/A'}
                             </div>
                         `;
                     });
@@ -263,19 +270,13 @@ async def consultar_nfe(cpf: str = None, nome: str = None, fone: str = None):
             else:
                 raise HTTPException(status_code=500, detail=f"Erro na consulta por telefone: {data}")
         
-        # Remove duplicatas
-        resultados_unicos = []
-        cpfs_vistos = set()
-        for item in resultados:
-            cpf_item = item.get('cpf_dest')
-            if cpf_item and cpf_item not in cpfs_vistos:
-                cpfs_vistos.add(cpf_item)
-                resultados_unicos.append(dict(item))
+        # Converter para lista de dicionários (mantém todos os registros)
+        resultados_lista = [dict(item) for item in resultados]
         
         return {
             "success": True,
-            "total": len(resultados_unicos),
-            "resultados": resultados_unicos
+            "total": len(resultados_lista),
+            "resultados": resultados_lista
         }
         
     except Exception as e:
