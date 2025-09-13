@@ -133,6 +133,31 @@ class DatabaseManager:
                 
         except Exception as e:
             return False, str(e)
+    
+    def consultar_detalhes_compra(self, cpf: str, data_compra: str):
+        """
+        Busca detalhes completos de uma compra específica
+        """
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                query = """
+                    SELECT nome_dest, cpf_dest, fone, ender_dest, num_dest, 
+                           bairro, cep, municipio, uf, data_compra
+                    FROM dim_nfe 
+                    WHERE cpf_dest = %s AND data_compra = %s
+                    LIMIT 1
+                """
+                
+                cursor.execute(query, (cpf, data_compra))
+                resultado = cursor.fetchall()
+                cursor.close()
+                
+                return True, resultado
+                
+        except Exception as e:
+            return False, str(e)
 
 # Instância global
 db_manager = DatabaseManager()

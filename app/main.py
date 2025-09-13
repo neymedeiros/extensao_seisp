@@ -103,6 +103,16 @@ async def home():
                 background: #f8f9fa;
                 border-radius: 8px;
             }
+            .results-header {
+                background: linear-gradient(45deg, #28a745, #20c997);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                font-size: 18px;
+                font-weight: 600;
+                text-align: center;
+            }
             .result-item {
                 background: white;
                 margin: 15px 0;
@@ -115,6 +125,139 @@ async def home():
             .result-item:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            }
+            .result-info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 15px;
+            }
+            .info-column {
+                flex: 1;
+                margin-right: 20px;
+            }
+            .result-actions {
+                text-align: right;
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 1px solid #eee;
+            }
+            .btn-view {
+                background: linear-gradient(45deg, #e74c3c, #c0392b);
+                color: white;
+                padding: 8px 20px;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .btn-view:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+            }
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+                animation: fadeIn 0.3s;
+            }
+            .modal-content {
+                background-color: white;
+                margin: 5% auto;
+                padding: 0;
+                border-radius: 15px;
+                width: 90%;
+                max-width: 800px;
+                max-height: 85vh;
+                overflow-y: auto;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s;
+            }
+            .modal-header {
+                background: linear-gradient(45deg, #e74c3c, #c0392b);
+                color: white;
+                padding: 20px 30px;
+                border-radius: 15px 15px 0 0;
+                position: relative;
+            }
+            .modal-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            .close {
+                position: absolute;
+                right: 20px;
+                top: 15px;
+                color: white;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+                width: 35px;
+                height: 35px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background-color 0.2s;
+            }
+            .close:hover {
+                background-color: rgba(255,255,255,0.2);
+            }
+            .modal-body {
+                padding: 30px;
+            }
+            .detail-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 20px;
+            }
+            .detail-item {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #e74c3c;
+            }
+            .detail-label {
+                font-weight: 600;
+                color: #2c3e50;
+                margin-bottom: 5px;
+            }
+            .detail-value {
+                color: #34495e;
+                font-size: 16px;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideIn {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            @media (max-width: 768px) {
+                .detail-grid {
+                    grid-template-columns: 1fr;
+                }
+                .result-info {
+                    flex-direction: column;
+                }
+                .info-column {
+                    margin-right: 0;
+                    margin-bottom: 10px;
+                }
+            }
+            .no-results {
+                text-align: center;
+                padding: 40px;
+                color: #666;
+                font-size: 18px;
             }
         </style>
     </head>
@@ -156,8 +299,23 @@ async def home():
                 </form>
                 
                 <div id="resultados" class="results" style="display: none;">
-                    <h3>📊 Resultados:</h3>
+                    <div id="resultsHeader" class="results-header"></div>
                     <div id="listaResultados"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de Visualização da Compra -->
+        <div id="modalCompra" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🛍️ Detalhes da Compra</h2>
+                    <span class="close" onclick="fecharModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="detalhesCompra">
+                        <!-- Conteúdo será carregado dinamicamente -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -190,24 +348,43 @@ async def home():
             
             function mostrarResultados(data) {
                 const resultadosDiv = document.getElementById('resultados');
+                const headerDiv = document.getElementById('resultsHeader');
                 const listaDiv = document.getElementById('listaResultados');
                 
                 if (data.success && data.resultados.length > 0) {
+                    // Mostrar header com total de registros
+                    headerDiv.innerHTML = `📊 ${data.total} registro(s) encontrado(s)`;
+                    
                     let html = '';
-                    data.resultados.forEach(item => {
+                    data.resultados.forEach((item, index) => {
                         html += `
                             <div class="result-item">
-                                <strong>CPF:</strong> ${item.cpf_dest || 'N/A'}<br>
-                                <strong>Nome:</strong> ${item.nome_dest || 'N/A'}<br>
-                                <strong>Telefone:</strong> ${item.fone || 'N/A'}<br>
-                                <strong>Data:</strong> ${item.data_compra || 'N/A'}
+                                <div style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                                    <strong>Registro ${index + 1}</strong>
+                                </div>
+                                <div class="result-info">
+                                    <div class="info-column">
+                                        <strong>CPF:</strong> ${item.cpf_dest || 'N/A'}<br>
+                                        <strong>Nome:</strong> ${item.nome_dest || 'N/A'}
+                                    </div>
+                                    <div class="info-column">
+                                        <strong>Telefone:</strong> ${item.fone || 'N/A'}<br>
+                                        <strong>Data:</strong> ${item.data_compra || 'N/A'}
+                                    </div>
+                                </div>
+                                <div class="result-actions">
+                                    <button class="btn-view" onclick="visualizarCompra('${item.cpf_dest}', '${item.data_compra}', ${index})">
+                                        👁️ Visualizar Compra
+                                    </button>
+                                </div>
                             </div>
                         `;
                     });
                     listaDiv.innerHTML = html;
                     resultadosDiv.style.display = 'block';
                 } else if (data.success && data.resultados.length === 0) {
-                    listaDiv.innerHTML = '<p>❌ Nenhum resultado encontrado.</p>';
+                    headerDiv.innerHTML = `📊 0 registros encontrados`;
+                    listaDiv.innerHTML = '<div class="no-results">⚠️ Nenhum resultado encontrado.</div>';
                     resultadosDiv.style.display = 'block';
                 } else {
                     alert('Erro: ' + data.error);
@@ -233,6 +410,97 @@ async def home():
                     }
                 } catch (error) {
                     alert('❌ Erro: ' + error.message);
+                }
+            }
+            
+            async function visualizarCompra(cpf, data, index) {
+                try {
+                    const response = await fetch(`/detalhes-compra?cpf=${encodeURIComponent(cpf)}&data=${encodeURIComponent(data)}`);
+                    const dados = await response.json();
+                    
+                    if (dados.success && dados.detalhes) {
+                        mostrarModalCompra(dados.detalhes, index + 1);
+                    } else {
+                        alert('❌ Erro ao carregar detalhes: ' + (dados.error || 'Dados não encontrados'));
+                    }
+                } catch (error) {
+                    alert('❌ Erro: ' + error.message);
+                }
+            }
+            
+            function mostrarModalCompra(detalhes, numeroRegistro) {
+                const detalhesDiv = document.getElementById('detalhesCompra');
+                
+                detalhesDiv.innerHTML = `
+                    <div style="text-align: center; margin-bottom: 20px; padding: 15px; background: #e8f5e8; border-radius: 8px;">
+                        <strong style="color: #28a745; font-size: 18px;">📋 Registro ${numeroRegistro}</strong>
+                    </div>
+                    
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">👤 Nome do Destinatário</div>
+                            <div class="detail-value">${detalhes.nome_dest || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">🆔 CPF</div>
+                            <div class="detail-value">${detalhes.cpf_dest || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">📞 Telefone</div>
+                            <div class="detail-value">${detalhes.fone || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">📅 Data da Compra</div>
+                            <div class="detail-value">${detalhes.data_compra || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">🏠 Endereço</div>
+                            <div class="detail-value">${detalhes.ender_dest || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">🔢 Número</div>
+                            <div class="detail-value">${detalhes.num_dest || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">🏘️ Bairro</div>
+                            <div class="detail-value">${detalhes.bairro || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">📮 CEP</div>
+                            <div class="detail-value">${detalhes.cep || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">🏙️ Município</div>
+                            <div class="detail-value">${detalhes.municipio || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">🗺️ UF</div>
+                            <div class="detail-value">${detalhes.uf || 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('modalCompra').style.display = 'block';
+            }
+            
+            function fecharModal() {
+                document.getElementById('modalCompra').style.display = 'none';
+            }
+            
+            // Fechar modal clicando fora dele
+            window.onclick = function(event) {
+                const modal = document.getElementById('modalCompra');
+                if (event.target === modal) {
+                    fecharModal();
                 }
             }
         </script>
@@ -285,6 +553,31 @@ async def consultar_nfe(cpf: str = None, nome: str = None, fone: str = None):
             "error": str(e)
         }
 
+@app.get("/detalhes-compra")
+async def detalhes_compra(cpf: str, data: str):
+    """
+    Endpoint para buscar detalhes completos de uma compra específica
+    """
+    try:
+        success, resultado = db_manager.consultar_detalhes_compra(cpf, data)
+        
+        if success and resultado:
+            return {
+                "success": True,
+                "detalhes": dict(resultado[0]) if resultado else None
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Detalhes não encontrados"
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/test-db")
 async def test_database():
     """
@@ -308,7 +601,7 @@ if __name__ == "__main__":
     print("🚀 Iniciando extensao_seisp - Fase 2")
     print("📊 Consultas exatas na tabela dim_nfe")
     print("🌐 Acesse: http://127.0.0.1:8000")
-    print("❌ Para parar: Ctrl+C")
+    print("⛔ Para parar: Ctrl+C")
     
     uvicorn.run(
         "main:app",
